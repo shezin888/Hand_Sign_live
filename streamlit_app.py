@@ -119,7 +119,7 @@ with tab1:
             img = Image.open(snap)
             out = run_inference_top1(img, score_thresh=score) if mode == "Simple (Top-1)" \
                   else run_inference_nms(img, score_thresh=score, iou_thresh=iou, max_dets=k)
-            st.image(out, use_container_width=True)
+            st.image(out, use_column_width=True)
 
 with tab2:
     file = st.file_uploader("Upload an image", type=["jpg","jpeg","png"])
@@ -127,8 +127,8 @@ with tab2:
         img = Image.open(file)
         out = run_inference_top1(img, score_thresh=score) if mode == "Simple (Top-1)" \
               else run_inference_nms(img, score_thresh=score, iou_thresh=iou, max_dets=k)
-        st.image(out, use_container_width=True)
-
+        st.image(out, use_column_width=True)
+        
 st.markdown(
     "<small>Tip: plain background + good lighting improves results. "
     "If boxes look too big/noisy, raise the score threshold or use Simple mode.</small>",
