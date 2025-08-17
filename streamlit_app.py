@@ -1,7 +1,20 @@
 import os
-os.environ["TF_USE_LEGACY_KERAS"] = "1" 
+os.environ["TF_USE_LEGACY_KERAS"] = "1"
 
 import streamlit as st
+st.set_page_config(page_title="Hand Sign Detection", page_icon="✋", layout="wide")
+
+# optional CSS (ok after page_config)
+st.markdown("""
+<style>
+[data-testid="stCamera"] video,
+[data-testid="stCamera"] canvas,
+[data-testid="stFileUploaderDropzone"] {
+    max-width: 360px !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
 import tensorflow as tf
 import numpy as np
 from PIL import Image, ImageDraw
@@ -32,9 +45,8 @@ def run_inference_top1(pil_img, score_thresh=0.70):
     img = pil_img.convert("RGB")
     W, H = img.size
     x = tf.convert_to_tensor(np.asarray(img))[tf.newaxis, ...]
-
     out = detect_fn(x)
-    boxes  = out["detection_boxes"][0].numpy()         # (N,4) ymin,xmin,ymax,xmax in [0,1]
+    boxes  = out["detection_boxes"][0].numpy()
     scores = out["detection_scores"][0].numpy()
     classes= out["detection_classes"][0].numpy().astype(int)
 
@@ -48,12 +60,10 @@ def run_inference_top1(pil_img, score_thresh=0.70):
     y1 = int(np.clip(ymin * H, 0, H - 1)); y2 = int(np.clip(ymax * H, 0, H - 1))
     w, h = x2 - x1, y2 - y1
     area_ratio = (w * h) / float(W * H)
-
-    # sanity: drop tiny or almost-full-frame boxes
     if w < 16 or h < 16 or area_ratio > 0.85:
         return img
 
-    label = CLASS_NAMES[classes[i] - 1] if 1 <= classes[i] <= len(CLASS_NAMES) else str(classes[i])
+    label = CLASS_NAMES[classes[i]-1] if 1 <= classes[i] <= len(CLASS_NAMES) else str(classes[i])
     _draw_box(img, x1, y1, x2, y2, label, s)
     return img
 
@@ -73,7 +83,6 @@ def run_inference_nms(pil_img, score_thresh=0.60, iou_thresh=0.45, max_dets=3):
     if boxes.size == 0:
         return img
 
-    # absolute coords for NMS
     b_abs = np.stack([boxes[:,0]*H, boxes[:,1]*W, boxes[:,2]*H, boxes[:,3]*W], axis=1).astype(np.float32)
     idx = tf.image.non_max_suppression(b_abs, scores.astype(np.float32),
                                        max_output_size=max_dets, iou_threshold=iou_thresh).numpy()
@@ -88,18 +97,6 @@ def run_inference_nms(pil_img, score_thresh=0.60, iou_thresh=0.45, max_dets=3):
     return img
 
 # ---- UI ----
-st.set_page_config(page_title="Hand Sign Detection", page_icon="✋", layout="wide")
-st.markdown("""
-<style>
-/* shrink the camera widget */
-[data-testid="stCamera"] video, 
-[data-testid="stCamera"] canvas,
-[data-testid="stFileUploaderDropzone"] {
-    max-width: 360px !important;   /* adjust as you like: 320, 360, 400 */
-}
-</style>
-""", unsafe_allow_html=True)
-
 st.title("✋ Hand Sign Detection")
 st.caption("Live SSD MobileNet hand-sign detector. Use webcam or upload an image.")
 
@@ -114,7 +111,7 @@ else:
 tab1, tab2 = st.tabs(["📷 Webcam", "📁 Upload"])
 
 with tab1:
-    col_cam, col_out = st.columns([1, 2])  # camera 1/3 width, output 2/3
+    col_cam, col_out = st.columns([1, 2])
     with col_cam:
         snap = st.camera_input("Webcam", label_visibility="collapsed")
     with col_out:
@@ -124,15 +121,12 @@ with tab1:
                   else run_inference_nms(img, score_thresh=score, iou_thresh=iou, max_dets=k)
             st.image(out, use_container_width=True)
 
-
 with tab2:
     file = st.file_uploader("Upload an image", type=["jpg","jpeg","png"])
     if file:
         img = Image.open(file)
-        if mode == "Simple (Top-1)":
-            out = run_inference_top1(img, score_thresh=score)
-        else:
-            out = run_inference_nms(img, score_thresh=score, iou_thresh=iou, max_dets=k)
+        out = run_inference_top1(img, score_thresh=score) if mode == "Simple (Top-1)" \
+              else run_inference_nms(img, score_thresh=score, iou_thresh=iou, max_dets=k)
         st.image(out, use_container_width=True)
 
 st.markdown(
