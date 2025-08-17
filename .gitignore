@@ -1,0 +1,18 @@
+# python
+__pycache__/
+*.pyc
+.venv*/
+.ipynb_checkpoints/
+
+# training / heavy folders
+Tensorflow/
+tf_models/
+workspace/
+pre-trained-models/
+annotations/
+images/
+models/**/checkpoint/
+*.ckpt*
+*.tfrecord
+*.tar.gz
+*.zip
